@@ -1,0 +1,13 @@
+name = "NQCPlots"
+uuid = "8b808dac-470e-4291-a362-2db406738608"
+authors = ["Alexander Spears <39826690+Alexsp32@users.noreply.github.com> and contributors"]
+version = "1.0.0-DEV"
+
+[compat]
+julia = "1.9"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
