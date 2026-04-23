@@ -1,12 +1,11 @@
-name = "NQCPlots"
-uuid = "8b808dac-470e-4291-a362-2db406738608"
-version = "1.0.0"
-authors = ["Alexander Spears <39826690+Alexsp32@users.noreply.github.com> and contributors"]
-
 [deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 NQCBase = "78c76ebc-5665-4934-b512-82d81b5cbfb7"
+NQCPlots = "8b808dac-470e-4291-a362-2db406738608"
 PeriodicTable = "7b2266bf-644c-5ea3-82d8-af4bbd25a884"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 UnitfulAtomic = "a7773ee8-282e-5fa2-be4e-bd808c38a91a"
 
@@ -17,12 +16,3 @@ PeriodicTable = "1.2.1"
 Unitful = "1.28.0"
 UnitfulAtomic = "1.0.0"
 julia = "1.9"
-
-[extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-
-[targets]
-test = ["Test"]
-
-[workspace]
-projects = ["test"]
