@@ -1,10 +1,11 @@
 """
-A module containing Makie recipes for NQCBase structures. 
+A module containing Makie recipes for NQCBase structures.
 
-I wish this could've been an extension of NQCBase, but the Julia extension system doesn't allow for it. 
+I wish this could've been an extension of NQCBase, but the Julia extension system doesn't allow for it.
 """
 module NQCPlots
 
+using Makie: register_computation!
 using Makie
 using PeriodicTable
 using UnitfulAtomic
@@ -20,14 +21,25 @@ for el in PeriodicTable.elements
         col = parse(Makie.Colors.Colorant, el.cpk_hex)
     catch e
     end
-    push!(atom_colors, Symbol(el) => col)
+    push!(atom_colors, Symbol(el.symbol) => col)
 end
+
+export atomic_structures_theme
+
+const atomic_structures_theme = Theme(
+    Axis=( # Fit axes to data by default, so atoms are circular.
+        aspect=Makie.DataAspect(),
+    ),
+    Axis3=( # Fit axes to data by default, so atoms are spherical.
+        aspect=:data,
+    ),
+)
 
 # Default atom colours
 const default_atom_fills = Dict(atom_colors...)
 # Empirical atomic radii (pm) from Wikipedia data page:
 # https://en.wikipedia.org/wiki/Atomic_radii_of_the_elements_(data_page)
-const default_atomic_radii_pm = Dict{Symbol, Float64}(
+const default_atomic_radii_pm = Dict{Symbol,Float64}(
     :H => 25,
     :He => 120,
     :Li => 145,
@@ -119,16 +131,16 @@ const default_atomic_radii_pm = Dict{Symbol, Float64}(
     :Pu => 175,
     :Am => 175,
     :Cm => 176,
- )
+)
 
 bettersphere = Makie.GeometryBasics.mesh(
-     Makie.GeometryBasics.Tesselation(
-         Makie.GeometryBasics.Sphere(Point3f(0.0,0.0,0.0), 1.0),
-         128
-     )
- )
+    Makie.GeometryBasics.Tesselation(
+        Makie.GeometryBasics.Sphere(Point3f(0.0, 0.0, 0.0), 1.0),
+        128
+    )
+)
 
-@recipe AtomicStructure3DAtoms (structure, ) begin
+@recipe Atoms3D (structure,) begin
     """
     Dictionary{Symbol, Float64} mapping element symbols to atomic radii in Angstroms for plotting. Default values are based on empirical atomic radii in picometers from Wikipedia data page.
 
@@ -163,29 +175,107 @@ bettersphere = Makie.GeometryBasics.mesh(
 end
 
 # Plot in 3D by default
-# Makie.args_preferred_axis(::Type{<: AtomicStructure3DAtoms}) = Makie.Axis3
+# Makie.args_preferred_axis(::Type{<: Atoms3D}) = Makie.Axis3
 
-function Makie.plot!(plot::AtomicStructure3DAtoms, )
-    structure = plot[:structure]    
+function Makie.plot!(plot::Atoms3D{<:Tuple{<:NQCBase.Structure}},)
+    input_nodes = [
+        :structure,
+        :atomicradii,
+        :atomcolors,
+        :show_cell,
+    ] # Take a single structure in
+    output_nodes = [
+        :positions, # Convert structure positions to plottable positions in Å.
+        :markersize, # Generate marker sizes based on conversion dict
+        :color, # Generate colors based on conversion dict
+    ]
+    register_computation!(plot.attributes, input_nodes, output_nodes) do inputs, changed, cached
+        # Unpack inputs
+        atomic_structure = inputs[:structure]
+        atomicradii = inputs[:atomicradii]
+        atomcolors = inputs[:atomcolors]
+
+        # Convert positions to Å and then to Point3f format for plotting
+        positions_conv = auconvert.(u"Å", atomic_structure.positions) .|> ustrip
+        positions_AA::Vector{Point3f} = [Point3f(pos...) for pos in eachcol(positions_conv)]
+        # Generate marker sizes based on conversion dict
+        marker_sizes = [atomicradii[el] for el in atomic_structure.atoms.types]
+        # Generate colors based on conversion dict
+        color = [atomcolors[el] for el in atomic_structure.atoms.types]
+        return (positions_AA, marker_sizes, color)
+    end
+    register_computation!(
+        plot.attributes,
+        [:structure, :show_cell],
+        [:cell_poly],
+    ) do inputs, changed, cached
+        show_cell = inputs[:show_cell]
+        atomic_structure = inputs[:structure]
+        if show_cell || isa(atomic_structure.cell, PeriodicCell)
+            # Generate Cell polygon from structure.cell.vectors if show_cell is true
+            cell_poly = Point3f[]
+            cell_vectors = auconvert.(u"Å", atomic_structure.cell.vectors) |> ustrip # Convert to Å
+            # Convert unit cell into vertices and indices for mesh plotting. Each column of cell vectors is the unit vector in one dimension.
+            poly_points = [
+                zero(cell_vectors[:, 1]), # Origin
+                cell_vectors[:, 1],
+                cell_vectors[:, 1] + cell_vectors[:, 2],
+                cell_vectors[:, 2],
+                zero(cell_vectors[:, 1]), # Bottom face done
+                cell_vectors[:, 3],
+                cell_vectors[:, 3] + cell_vectors[:, 1],
+                cell_vectors[:, 3] + cell_vectors[:, 1] + cell_vectors[:, 2],
+                cell_vectors[:, 3] + cell_vectors[:, 2],
+                cell_vectors[:, 3], # Top face done
+                cell_vectors[:, 3] + cell_vectors[:, 1],
+                cell_vectors[:, 1],
+                cell_vectors[:, 1] + cell_vectors[:, 2],
+                cell_vectors[:, 3] + cell_vectors[:, 1] + cell_vectors[:, 2],
+                cell_vectors[:, 3] + cell_vectors[:, 2],
+                cell_vectors[:, 2],
+            ]
+            for vertex in poly_points
+                push!(cell_poly, Point3f(vertex...))
+            end
+            return (cell_poly,)
+        end
+        return (Point3f[],)
+    end
+
+    # map!(plot.attributes, input_nodes, output_nodes) do (atomic_structure, atomicradii, atomcolors)
+    #     # Convert positions to Å and then to Point3f format for plotting
+    #     positions_conv = auconvert.(u"Å", atomic_structure.positions) .|> ustrip
+    #     positions_AA::Vector{Point3f} = [Point3f(pos...) for pos in eachcol(positions_conv)]
+    #     # Generate marker sizes based on conversion dict
+    #     marker_sizes = [atomicradii[el] for el in atomic_structure.atoms.types]
+    #     # Generate colors based on conversion dict
+    #     color = [atomcolors[el] for el in atomic_structure.atoms.types]
+    #     return (positions_AA, marker_sizes, color)
+    # end
+
     # Generate positions in Angstroms and convert to Point3f format for plotting
-    positions_AA = auconvert.(u"Å", structure.positions) .|> ustrip
-    positions_AA = [Point3f(pos...) for pos in eachcol(positions_AA)]
-    # Generate marker sizes based on conversion dict
-    marker_sizes = [plot[:atomicradii][el] for el in structure.atoms.symbols]
-    # Generate colors based on conversion dict
-    colors = [plot[:atomcolors][el] for el in structure.atoms.symbols]
     meshscatter!(
-          plot,
-          positions_AA,
-          color = colors,
-          marker = plot[:marker],
-          markersize = marker_sizes,
-          #ssao = true,
-          # strokewidth = atom_strokewidth,
-          # strokecolor = [get(atom_edges, i, colorant"black") for i in trj_postprocessed[:atoms].types[atoms_to_draw]],
-          rasterize = true,
-        )
-    return plot
+        plot,
+        plot.positions,
+        marker=plot[:marker],
+        markersize=plot.markersize,
+        color=plot.color,
+        # markerspace = :data,
+        #ssao = true,
+        # strokewidth = atom_strokewidth,
+        # strokecolor = [get(atom_edges, i, colorant"black") for i in trj_postprocessed[:atoms].types[atoms_to_draw]],
+        rasterize=true,
+    )
+    poly!(
+        plot,
+        plot.cell_poly,
+        strokecolor=plot.cellcolor,
+        strokewidth=plot.celllinewidth,
+        alpha=plot.cellalpha,
+        color=colorant"transparent", # Transparent fill
+    )
 end
+
+Makie.preferred_axis_type(::Atoms3D) = Makie.Axis3
 
 end
