@@ -211,7 +211,7 @@ function Makie.plot!(plot::Atoms3D{<:Tuple{<:NQCBase.Structure}},)
     ) do inputs, changed, cached
         show_cell = inputs[:show_cell]
         atomic_structure = inputs[:structure]
-        if show_cell || isa(atomic_structure.cell, PeriodicCell)
+        if show_cell && isa(atomic_structure.cell, PeriodicCell)
             # Generate Cell polygon from structure.cell.vectors if show_cell is true
             cell_poly = Point3f[]
             cell_vectors = auconvert.(u"Å", atomic_structure.cell.vectors) |> ustrip # Convert to Å
