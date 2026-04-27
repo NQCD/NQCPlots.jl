@@ -17,7 +17,7 @@ NQCPlots.jl is not yet registered in the Julia General registry. Install directl
 
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/alexsp32/NQCPlots.jl")
+Pkg.add(url="https://github.com/NQCD/NQCPlots.jl")
 ```
 
 A Makie backend must also be available in your environment.
