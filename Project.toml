@@ -1,7 +1,10 @@
 name = "NQCPlots"
 uuid = "8b808dac-470e-4291-a362-2db406738608"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Alexander Spears <39826690+Alexsp32@users.noreply.github.com> and contributors"]
+
+[workspace]
+projects = ["test"]
 
 [deps]
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
@@ -16,13 +19,10 @@ NQCBase = "1.1.0"
 PeriodicTable = "1.2.1"
 Unitful = "1.28.0"
 UnitfulAtomic = "1.0.0"
-julia = "1.9"
+julia = "1.10"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test"]
-
-[workspace]
-projects = ["test"]
